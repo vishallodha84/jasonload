@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 18
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - REPOSITORY_NAME="notification"
+      - TAG="$REPOSITORY_NAME.$(echo $CODEBUILD_BUILD_NUMBER)"
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build --cache-from $ECR_REPOSITORY_URI:$TAG --tag $ECR_REPOSITORY_URI:$TAG .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...\
+      - docker push $ECR_REPOSITORY_URI:$TAG
+      #- printf '{"ImageURI":"%s:%s"}' $ECR_REPOSITORY_URI $TAG > imageDetail.json
+      - printf '[{"name":"notification","imageUri":"%s"}]' $ECR_REPOSITORY_URI:$TAG > imageDetail.json
+cache:
+  paths:
+    - '/root/.m2/**/*'
+artifacts:
+    files: imageDetail.json
